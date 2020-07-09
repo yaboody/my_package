@@ -1,0 +1,158 @@
+---
+title: "Regular Expressions"
+author: "Yoni Aboody"
+date: "08/01/2019"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Regular Expressions}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+Regular expressions let you find a phrase in a body of text, and R lets you do something with it. More specifically, the stringr package has a series of functions starting with str_ which take two arguments - a body of text to search, and a quoted pattern by which to search the text (looks something like: "a2c").
+
+* Depending on what comes after str_, you can: 
+    * locate
+    * detect
+    * extract
+    * replace
+    * match
+    * or split
+
+just by using those words as the suffix which comes after str_. Of course, most of these functions will only act once, so if you're looking for multiple instances of a phrase, an additional _all suffix attached to the function will let you do that. Here's some examples, but feel free to try out these functions yourself!
+
+```{r}
+library(stringr)
+
+example_test <- " abc 123 is me me mememe 123Abc"
+
+str_extract(example_test, "me")
+
+str_extract_all(example_test, "me")
+```
+  
+  
+Truthfully, in regular expressions functions aren't as important as functionality. Regex searches for "phrases", but what are these phrases made out of?
+
+* Regular expressions can locate any combination of any of the following:
+    * Letters (case-sensitive)
+    * Numbers
+    * Punctuation
+    * Empty space (whitespace)
+
+So, if you want to look for the number twelve in a text, just put it in your pattern. Of course, regular expressions reads 12 as one two, but that still works in most cases. Regex also has special characters to help you refine your search patterns; most punctuation double as special characters, so if you actually want to match, say, a period, you'll have to escape it with a backslash (and escape that with a second backslash, unfortunately). So, a period is \\., but the actual period in regex matches literally anything, from digits to letters to whitespace; other special-character punctuation include the caret, which tells Regex to only match what follows the caret at the start of a word, and the dollar sign, which tells Regex to only match what's before it at the end of the string. Because Regex has other important uses for its punctuation, most of them are just regular letters with two slashes in front; some important ones include \\s, which matches any whitespace character, as well as \\w which matches any letter or number, and \\W, which matches anything that's not a letter or number. (Capitalisation as negation is a theme with Regex special characters.) Here's some examples:
+
+```{r}
+
+example_test <- " abc 123 is me me mememe 123Abc"
+
+str_extract_all(example_test, "\\s\\w")
+
+str_extract_all(example_test, "\\W.")
+
+str_extract_all(example_test, "^\\W.")
+
+str_extract_all(example_test, "bc$")
+```
+
+Most of Regex's special punctuation characters are actually used to form more complex patterns. Say you want to check a gradebook for As and Bs; if this vignette is your first introduction to Regex you might say to just run two different extraction functions, but there's a better way for those who are in the know - another general theme with Regex.
+
+* Regex has a couple ways to make patterns more complex...
+    * Character Sets []
+    * Character Ranges -
+    * Capture Groups ()
+    * Lookaheads (?), positive (?=) and negative (?!)
+    * Lookbehinds (?<), positive (?<=) and negative (?<!)
+    * quantifiers (too many to list).
+
+For the above example, we need A and B. So, [AB], meaning A or B. By the way, this is where typing 12 for twelve gets you in trouble - [12] just means 1 or 2. If you want to match several different numbers or letters and don't want to type out the entire alphabet, a dash can do you a world of good - instead of typing [0123], just type [0-3] for the same effect. [a-f] gives you a through f, and [A-F] capital A through capital F. By the way, dashes don't do anything outside of brackets, but they work great inside of them. Speaking of working differently outside of brackets, the caret (^) character at the very start of a character set actually tells Regex to match anything besides what's in that character group - kind of like negative subsetting, with brackets no less. If you don't want to match any numbers, \\D will work, but so will [^0-9]. Here's some examples!
+
+```{r}
+
+example_test <- " abc 123 is me me mememe 123Abc"
+
+str_extract_all(example_test, "[abc][a-c]")
+
+str_extract_all(example_test, "[^abc][^a-c]")
+
+str_extract_all(example_test, "[abc123][a-c1-3]")
+
+str_extract_all(example_test, "[A-C][abc][acb]")
+
+```
+
+So far, none of the Regex we've gone over lets Regex store or use any of the strings it reads - it just reads them in and spits them out. Capture groups are Regex's way of holding on to some of that information and using it in the current pattern. In other words...let's say you want to make a program that scrapes websites for the name of the webmaster, and then finds every instance of that name. You know where the name of the webmaster is, but you don't know every webmaster's name; matching the webmaster's name is easy, but how do you avoid matching everything else along with it? Well, one great way is capture groups! Anything inside parantheses becomes a capture group, which can then be referenced; the first capture group defined in a pattern can be referenced with \\1, the second with \\2, and so on. Unfortunately, grouping and brackets don't mix, so if you want to group a range of characters, you'll either need special characters or the | metacharacter, which acts as an or sign, letting you match multiple strings (if multiple strings match, the one typed earlier takes precedence). With these tools, you can make a pattern with general logic that changes depending on the circumstance. Here's some examples:
+
+
+```{r}
+
+example_test_vector <- c("aa", "bb", "cc", "adad", "aadd")
+
+example_test
+
+str_extract_all(example_test_vector, "(.)\\1")
+
+str_extract_all(example_test_vector, "(.)(.)\\1\\2")
+
+str_extract_all(example_test, "(..|bc)\\1")
+
+str_extract_all(example_test, "(...|abc)")
+
+
+```
+
+Even with capture groups' ability to self-reference, Regex is still pretty reliant on the user knowing how long each string is, and long strings can make for long patterns. The solution: quantifiers! By setting a quantifier after a character or a character set, you can capture an entire string of that character and character set, with the length that you determine with your quantifier.
+
+* Regex has a couple ways to determine string length:
+    * \* - matches anywhere from 0 to infinite instances of a character
+    * \+ - matches 1 to infinite instances of a character
+    * {#} - matches # instances of a character
+    * {#,#} - matches anywhere between #1 and #2 instances of a character
+    * {#,} - matches anywhere between # and infinite instances of a character
+
+As you can see, many of these modifiers end up matching an infinitely long string, so the ? modifier - a modifier for modifiers - can be used after any modifier, causing it to match the shortest possible match which fits the criteria. Here's some examples of modifiers in action!
+
+```{r}
+
+example_test <- " abc 123 is me me mememe 123Abc"
+
+str_extract_all(example_test, ".*")
+
+str_extract_all(example_test, "m.*e")
+
+str_extract_all(example_test, "m.*?e")
+
+str_extract_all(example_test, "m.+?e")
+
+str_extract_all(example_test, "[1-3]{3}")
+```
+
+Last but not least, Regex has lookaheads and lookbehinds, a way of verifying that certain conditions are or aren't met before matching certain text. These let you set even complex patterns, while filtering out specific examples of those patterns that aren't warranted, or only seeking those that are.
+
+* Regex can check to see if certain conditions are me:
+    * (?=) - Put in front of part of a pattern to only match that part if what's in front of it matches what's in the parantheses
+    * (?!) Put in front of part of a pattern to only match that part if what's in front of it doesn't match what's in the parantheses
+    * (?<=) - Put behind part of a pattern to only match that part if what's behind it matches what's in the parantheses
+    * (?<!) Put behind part of a pattern to only match that part if what's behind of it doesn't match what's in the parantheses
+
+Keep in mind that lookbehinds are a bit pickier than lookaheads; if you're looking behind something pretty generic, Regex might have to do a lot of looking behind, and that might end up crashing your computer. Lookaheads and lookbehinds both use parantheses, but they aren't capture groups; speaking of those, capture groups, character sets, and even special characters all work fine with lookaheads and lookbehinds alike. The best way to explain all this, as always, is with some examples.
+
+
+```{r}
+
+example_test <- " abc 123 is me me mememe 123Abc"
+
+str_extract_all(example_test, "123")
+
+str_extract_all(example_test, "123(?=A)")
+
+str_extract_all(example_test, "123(?!A)")
+
+str_extract_all(example_test, "(?<=c )123")
+
+str_extract_all(example_test, "(?<!c )123")
+```
+
+Last words:
+
+With Regex, the most important thing isn't to memorize all of the different special characters - if you want to do that, there's a lot more this text hasn't covered, so go ahead and look them up - but to know how to match just what you want, no more and no less. Matching what you want can require expansive tools, like .*, which matches basically anything with basically any length, but can also match entire paragraphs; Regex doesn't necessarily respect the spaces between words, and its quantifiers are "greedy", so you need to be careful with that. Remember, Regex is case-sensitive, multi-digit numbers are just collections of single digits to Regex, and special characters need to be escaped with two slashes. Last but not least, get good at figuring out patterns in text if you want to get good with Regex, and have a good one!
